@@ -2,8 +2,8 @@ import pygame
 import sys
 from game import Game
 import numpy as np
-import pygame.gfxdraw
-from openaitest import *  # Import gfxdraw for drawing antialiased circles
+import pygame.gfxdraw  # Import gfxdraw for drawing antialiased circles
+from openaitest import ai_function
 
 # Initialize Pygame
 pygame.init()
@@ -24,37 +24,69 @@ game = Game(screen, window_width, window_height)
 clock = pygame.time.Clock()
 running = True
 game_phase = "playing"  # Game phases: "playing", "discussion", "voting"
-phase_duration = 10  # 10 seconds for demo purposes
+phase_duration = 30  # 10 seconds for demo purposes
 phase_start_time = pygame.time.get_ticks()
 krange = 10000
-vision_radius = 100  # Radius of the vision circle
+room = []
+vision_radius = 100  # Radius of the vision circleu
 move_var = 1
 discussion_var = 1
+ai_ids = ['AI1', 'AI2', 'AI3', 'AI4', 'AI5']
 
 def ai_movement():
     for i in range(1, 6):
-        output = np.random.randint(0,5)
-        cnt = 0
-        for player in game.players:
-            if player.room == output:
-                cnt += 1
-        game.move_to_room(i, output, cnt)
+        if not game.list_of_deaths or game.list_of_deaths[0] != i:
+            output = np.random.randint(0, 6)
+            cnt = 0
+            for player in game.players:
+                if player.room == output:
+                    cnt += 1
+                player.rooms.append(room)
+            game.move_to_room(i, output, cnt)
 
-def ai_discussion(i):
-    # for i in range(1, 6):
-    output = "wtf-nigger"
-    game.players[i].idea = output
-    if output != "":
-        game.add_chat_message(i, output)
+    for i in range(1, 6):
+        for j in range(i + 1, 6):
+            alive_str = "alive"
+            if game.players[j].alive == 0:
+                alive_str = "dead"
+            game.players[i].neighbours.append([game.players[j], alive_str])
+            alive_str = "alive"
+            if game.players[i].alive == 0:
+                alive_str = "dead"
+            game.players[j].neighbours.append([game.players[i], alive_str])
 
-def ai_voting(i):
-    # AI players decide whom to vote for
-    output="2"
-    game.players[i].vote=output
-    for i in range(1, 6):  # Assuming player 0 is the user
+def ai_discussion():
+    for i in range(1, 6):
+        if game.players[0].role == 1:
+            prompt = "You are playing kind of an among us game but its not among us and nothing is named like among us,"+f"{i}"+"you are the killer, you have killed."+f"{game.players[i].killed}"+" now it is discussion time: you have been in rooms" + f"{game.players[i].rooms}"+ "and you have seen these other players dead or alive"+ f"{game.players[i].neighbours}"+"these are the people alive until now "+f"{game.players[i].alive}"+"these are the messages that have been until now"+f"{game.chat_messages}"+"depending on this information dont let the other know you did it.Write a message you would like to send to the chat, max 90 characters. Write like a regular player, no punctuation and no capitalization."
+           
+        else:
+        # game.chat_messages, game.players[i].rooms, game.players[i].neighbours
+            prompt = "You are playing kind of an among us game but its not among us and nothing is named like among us, you are player "+f"{i}"+"you are crewmate and there is one killer who killed somebody this round in one of the rooms. now it is discussion time: you have been in rooms" + f"{game.players[i].rooms}"+ "and you have seen these other players dead or alive"+ f"{game.players[i].neighbours}"+"these are the people alive until now"+f"{game.players[i].alive}"+"these are the messages that have been until now"+f"{game.chat_messages}"+"depending on these informations find out whos the killer among you.Write a message you would like to send to the chat, max 150 characters.Write like a regular player, no punctuation and no capitalization"
+        output = ai_function(ai_ids[i - 1], prompt)
+        game.players[i].idea = output.content
+        if output != "":
+            game.add_chat_message(i, output.content)
+
+def ai_voting():
+    alives = []
+    for i in range(1, 6):
         if game.players[i].alive:
-            game.ai_vote(i,output)
+            alives.append(i)
+    for i in range(1, 6):
+        # alives sunt cei ramasi in viata si trebuie sai incluzi in prompt
+        if game.players[0].role == 1:
+            prompt = "You are playing kind of an among us game, you are player "+f"{i}"+"you are the killer, you have killed."+f"{game.players[i].killed}"+" now it is voting time: you have been in rooms" + f"{game.players[i].rooms}"+ "and you have seen these other players dead or alive"+ f"{game.players[i].neighbours}"+"these are the people alive until now "+f"{game.players[i].alive}"+"these are the messages that have been until now"+f"{game.chat_messages}"+"choose who to vote depending on all of this information."
+           
+        else:
+        # game.chat_messages, game.players[i].rooms, game.players[i].neighbours
+            prompt = "You are playing kind of an among us game, you are player "+f"{i}"+"you are crewmate and there is one killer who killed somebody this round in one of the rooms. now it is discussion time: you have been in rooms" + f"{game.players[i].rooms}"+ "and you have seen these other players dead or alive"+ f"{game.players[i].neighbours}"+"these are the people alive until now"+f"{game.players[i].alive}"+"these are the messages that have been until now"+f"{game.chat_messages}"+"depending on these informations find out whos the killer among you."
+        output = ai_function(ai_ids[i - 1], prompt)
+        output = int(output.content)
+        game.votes[output] += 1
+        game.voted[i] = 1
 
+# eu sunt nr i, alives, daca este killer sau nu,  
 
 
 def closest(player):
@@ -64,7 +96,7 @@ def closest(player):
     for i in range(0, 6):
         if player != i and game.players[i].alive:
             xx, yy = game.players[i].pos
-            distance = (x - xx) * 2 + (y - yy) * 2
+            distance = (x - xx) ** 2 + (y - yy) ** 2
             if distance < min_distance:
                 min_distance = distance
                 closest_index = i
@@ -116,7 +148,7 @@ while running:
                 game.handle_voting(mouse_pos)
 
     keys = pygame.key.get_pressed()
-    if game_phase == "playing":
+    if game_phase == "playing" and (not game.list_of_deaths or 0 != game.list_of_deaths[0]):
         if keys[pygame.K_w]:
             game.players[0].vel[1] = -5
         elif keys[pygame.K_s]:
@@ -131,13 +163,17 @@ while running:
         else:
             game.players[0].vel[0] = 0
 
-        if game.players[0].role == 0:
+        if game.players[0].role == 1:
             var = closest(0)
             if keys[pygame.K_k] and game.kill_runda == 0 and var != -1:
                 game.kill(var)
                 game.kill_runda = 1
+                    
 
         # ai_movements()
+    
+    if game_phase == "voting" and game.voted[1] == 0:
+        ai_voting()
 
     if elapsed_time >= phase_duration:
         if game_phase == "playing":
@@ -168,8 +204,9 @@ while running:
     remaining_time = phase_duration - elapsed_time
     
     if game_phase == "discussion" and discussion_var:
-        ai_discussion(1)
+        ai_discussion()
         discussion_var = 0
+    
 
     # Draw the background image
     if game_phase == "playing":
@@ -177,7 +214,14 @@ while running:
         if int(remaining_time) == 5 and move_var:
             ai_movement()
             move_var = 0
-            print(int(remaining_time))
+        for i in range(1, 6):
+            if game.players[i].role and int(remaining_time) == 2 and game.players[i].killed == -1:
+                var = closest(i)
+                if var != -1:
+                    game.kill(var)
+                    game.players[i].killed = var
+                print(i)
+
     else:
         screen.fill(Game.BACKGROUND)
     
@@ -186,8 +230,8 @@ while running:
     game.loop(game_phase)
 
     # Draw the vision mask for player 0
-    if game_phase == "playing":
-        draw_vision_mask(game.players[0])
+    #if game_phase == "playing":
+        #draw_vision_mask(game.players[0])
     game.display_timer(remaining_time)
 
     pygame.display.flip()

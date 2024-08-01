@@ -1,7 +1,6 @@
 from openai import OpenAI
 client = OpenAI()
 
-
 # Define the personalities
 personalities = {
     'AI1': 'Friendly and supportive, always encouraging.',
@@ -30,13 +29,16 @@ def ai_function(ai_id, current_prompt):
     prompt = generate_prompt(personality, conversation_history, current_prompt)
 
     # Request completion from OpenAI
-    completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}]
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": f"You are an AI with the following personality: {personality}."},
+            {"role": "user", "content": prompt}
+        ]
     )
 
     # Extract the AI's response
-    direction = completion.choices[0].message['content']
+    direction = response.choices[0].message
 
     # Update the conversation history
     conversation_history.append(f"User: {current_prompt}")
@@ -48,10 +50,10 @@ def ai_function(ai_id, current_prompt):
     return direction
 
 # Example usage
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # Query each AI with the same prompt
     prompt = 'What is your plan for the game?'
     
-    for ai_id in personalities:
-        response = ai_function(ai_id, prompt)
-        print(f"{ai_id}: {response}")
+ #   for ai_id in personalities:
+  #      response = ai_function(ai_id, prompt)
+   #     print(f"{ai_id}: {response}")

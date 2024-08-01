@@ -18,6 +18,9 @@ class Player(pygame.sprite.Sprite):
         self.role = role
         self.room = -1
         self.idea = ""
+        self.rooms = []
+        self.neighbours = []
+        self.killed = -1 # who the killer killed
 
     def draw(self, screen):
         if self.alive:

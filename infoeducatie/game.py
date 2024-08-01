@@ -26,6 +26,8 @@ class Game:
                 color = (255, 0, 0)
             player = Player(color, window_width, window_height, x, y, w, h, (0, 0), 1, role)
             self.players.append(player)
+            self.players[i].killed = -1
+
         self.font = pygame.font.Font(None, 36)
         self.chat_messages = []
         self.chat_input = ""
@@ -37,7 +39,7 @@ class Game:
         self.list_of_deaths = []
 
     def kill(self, victim):
-        self.players[victim].color = (200, 200, 50)
+        self.players[victim].color = (230, 230, 50)
         self.list_of_deaths.append(victim)
 
     def restart_game_phase(self):
@@ -47,6 +49,9 @@ class Game:
             self.players[i].vel = np.array([0, 0], dtype=np.float64)
             self.players[i].room = -1
             self.players[i].idea = ""
+            self.players[i].rooms = []
+            self.players[i].neighbours = []
+            self.players[i].killed = -1
         self.votes = {i: 0 for i in range(len(self.players))}
         self.voted = [False] * len(self.players)
         self.kill_runda = 0
@@ -92,27 +97,12 @@ class Game:
         self.screen.blit(timer_text, (self.window_width - 200, 50))
 
     def add_chat_message(self, player, message):
-        if message:
+        if message and self.players[player].alive:
             self.chat_messages.append(f"Player{player}: {message}")
             message = ""
             if player == 0:
                 self.chat_input = ""
             self.chat_scroll_offset = max(0, len(self.chat_messages) * 40 - self.chat_window_height)
-
-    # Game Class
-
-def ai_vote(self, player_index, vote_for):
-    # Make sure the player has not already voted
-    if not self.voted[player_index]:
-        # Convert the vote_for to an integer, assuming it was passed as a string
-        vote_for = int(vote_for)
-
-        # Check if the chosen player is alive
-        if self.players[vote_for].alive:
-            # Register the vote
-            self.votes[vote_for] += 1
-            self.voted[player_index] = True  # Mark this player as having voted
-
 
     def handle_voting(self, mouse_pos):
         if not self.voted[0]:  # Assuming player 0 is the one voting
