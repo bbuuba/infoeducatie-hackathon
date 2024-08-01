@@ -3,7 +3,7 @@ import numpy as np
 from player import Player
 
 BLACK = (0, 0, 0)
-rooms = [[200, 200], [400, 200], [600, 200], [200, 400], [400, 400], [600, 400]]
+rooms = [[200, 100], [700, 100], [150, 550], [150, 300], [700, 500], [500, 400]]
 
 class Game:
     BACKGROUND = (0, 0, 0)
@@ -14,6 +14,7 @@ class Game:
         self.players = []
         self.screen = screen
         self.killer = np.random.randint(0, 6)
+        images = ["b1.png", "c1.png", "d1.png", "e1.png", "g1.png"]
         for i in range(6):
             x = window_width / 2 + i * 25
             y = window_height / 2
@@ -23,8 +24,8 @@ class Game:
             color = (255, 255, 255)
             if i == self.killer:
                 role = 1
-                color = (255, 0, 0)
-            player = Player(color, window_width, window_height, x, y, w, h, (0, 0), 1, role)
+            image = images[i - 1]
+            player = Player(color, window_width, window_height, x, y, w, h, (0, 0), 1, role, image)
             self.players.append(player)
             self.players[i].killed = -1
 
@@ -37,6 +38,7 @@ class Game:
         self.voted = [False] * len(self.players)  # Track which players have voted
         self.kill_runda = 0
         self.list_of_deaths = []
+        self.random_kill = np.random.randint(0,3) + 1
 
     def kill(self, victim):
         self.players[victim].color = (230, 230, 50)
@@ -52,37 +54,63 @@ class Game:
             self.players[i].rooms = []
             self.players[i].neighbours = []
             self.players[i].killed = -1
+            self.random_kill = np.random.randint(0,3) + 1
         self.votes = {i: 0 for i in range(len(self.players))}
         self.voted = [False] * len(self.players)
         self.kill_runda = 0
         
 
     def display_chat(self):
+        # Set the maximum width for the chat text area
+        max_width = self.window_width - 20  # You can adjust this value as needed
+
         # Render chat messages within a scrollable area
         chat_box = pygame.Rect(0, 0, self.window_width, self.chat_window_height)
         pygame.draw.rect(self.screen, (0, 0, 0), chat_box)
         pygame.draw.rect(self.screen, (255, 255, 255), chat_box, 2)
 
         # Render chat messages within the visible chat window
-        y_offset = chat_box.y + self.chat_window_height - 40
-        for message in reversed(self.chat_messages):
-            text = self.font.render(message, True, (255, 255, 255))
-            text_rect = text.get_rect(midleft=(chat_box.x + 10, y_offset))
-            if y_offset < chat_box.y:
-                break
-            self.screen.blit(text, text_rect)
-            y_offset -= 40
-        
+        y_offset = 10  # Start 10 pixels from the top
+        for message in self.chat_messages:
+            words = message.split(' ')
+            lines = []
+            current_line = ""
+
+            # Break the message into lines that fit within max_width
+            for word in words:
+                test_line = current_line + word + " "
+                text_width, _ = self.font.size(test_line)
+                if text_width <= max_width:
+                    current_line = test_line
+                else:
+                    lines.append(current_line)
+                    current_line = word + " "
+
+            if current_line:
+                lines.append(current_line)
+
+            # Render each line of the message
+            for line in lines:
+                text = self.font.render(line, True, (255, 255, 255))
+                text_rect = text.get_rect(topleft=(chat_box.x + 10, y_offset))
+                self.screen.blit(text, text_rect)
+                y_offset += text.get_height() + 5  # Add some space between lines
+            
+            # Adjust y_offset for each new message
+            y_offset += 10  # Add extra space between different messages
+
         # Render chat input box
-        input_box = pygame.Rect(50, 50 + self.chat_window_height, 700, 50)
+        input_box = pygame.Rect(10, self.chat_window_height + 10, max_width, 50)
         pygame.draw.rect(self.screen, (255, 255, 255), input_box, 2)
         input_text = self.font.render(self.chat_input, True, (255, 255, 255))
         self.screen.blit(input_text, (input_box.x + 10, input_box.y + 5))
 
+
+
     def display_voting(self):
         # Render voting interface
         self.vote_rects = [] 
-        y_offset = 50
+        y_offset = 100
         for i, player in enumerate(self.players):
             if player.alive:
                 player_rect = pygame.Rect(50, y_offset, 700, 30)
